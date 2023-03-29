@@ -1,0 +1,74 @@
+- name: Setup Workers
+  hosts: workers
+  tags: workers
+
+  tasks:
+    - name: Reset repository
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow
+        cmd: git reset --hard
+    - name: Pull repository
+      ansible.builtin.git:
+        repo: "https://github.com/davidfreina/FaaSFlow.git"
+        update: true
+        dest: /home/{{ ansible_ssh_user }}/FaaSFlow
+    - name: Setup redis container
+      community.docker.docker_container:
+        name: redis
+        image: redis
+        state: started
+        recreate: true
+        interactive: true
+        detach: true
+        published_ports:
+          - "6379:6379"
+
+- name: Setup Master
+  hosts: master
+  tags: master
+  tasks:
+    - name: Reset repository
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow
+        cmd: git reset --hard
+    - name: Pull repository
+      ansible.builtin.git:
+        repo: "https://github.com/davidfreina/FaaSFlow.git"
+        update: true
+        dest: /home/{{ ansible_ssh_user }}/FaaSFlow
+    - name: Remove container
+      community.docker.docker_container:
+        name: couchdb
+        state: absent
+    - name: Setup couchdb container
+      community.docker.docker_container:
+        name: couchdb
+        image: couchdb
+        interactive: true
+        detach: true
+        state: started
+        published_ports:
+          - "5984:5984"
+        env:
+          COUCHDB_USER: openwhisk
+          COUCHDB_PASSWORD: openwhisk
+        volumes:
+          - "/home/{{ ansible_ssh_user }}/FaaSFlow/couchdb.ini:/opt/couchdb/etc/local.ini"
+    - name: Finish couchdb setup
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/scripts
+        cmd: "python3 couchdb_starter.py"
+    - name: Add data to couchdb
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/src/grouping
+        cmd: "python3 grouping.py video illgal_recognizer fileprocessing wordcount cycles epigenomics genome soykb"
+    - name: Setup redis container
+      community.docker.docker_container:
+        name: redis
+        image: redis
+        state: started
+        recreate: true
+        interactive: true
+        detach: true
+        published_ports:
+          - "6379:6379"

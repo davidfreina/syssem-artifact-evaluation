@@ -1,0 +1,138 @@
+- name: Setup WorkerSP
+  ansible.builtin.import_playbook: setup_workersp.yaml
+  tags: scheduler-scalability
+- name: Run Scheduler Scalability experiment
+  hosts: master
+  gather_facts: true
+  tags: scheduler-scalability
+  tasks:
+    # It does not matter which SP is setup for this benchmark
+    # but by calling the playbook we reset the proxy and gateway processes
+    - name: Run benchmark
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/scheduler_scalabilty
+        cmd: python3 run.py
+    - name: Get benchmark results
+      register: result
+      ansible.builtin.command:
+        cmd: cat /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/scheduler_scalabilty/scheduler_scalability.csv
+    - name: Show benchmark results
+      ansible.builtin.debug:
+        msg: "{{ ansible_hostname }}: {{ result.stdout_lines }}"
+
+- name: Setup WorkerSP
+  ansible.builtin.import_playbook: setup_workersp.yaml
+  tags: component-overhead
+- name: Run Component Overhead experiment
+  hosts: workers
+  tags: component-overhead
+  tasks:
+    # It does not matter which SP is setup for this benchmark
+    # but by calling the playbook we reset the proxy and gateway processes
+    - name: Get proxy pid
+      register: pid
+      ansible.builtin.shell:
+        cmd: ps aux | grep "[p]ython3 proxy.py" | awk '{print $2}'
+    - name: Run benchmark
+      ansible.builtin.shell:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/component_overhead/
+        cmd: python3 run.py --pid={{ pid.stdout }}
+    - name: Get benchmark results
+      register: result
+      ansible.builtin.command:
+        cmd: cat /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/component_overhead/component_overhead.txt
+    - name: Show benchmark results
+      ansible.builtin.debug:
+        msg: "{{ ansible_hostname }}: {{ result.stdout_lines }}"
+
+- name: Setup WorkerSP
+  ansible.builtin.import_playbook: setup_workersp.yaml
+  tags: data-overhead
+- name: Run Data Overhead experiment (WorkerSP)
+  hosts: master
+  gather_facts: true
+  tags: data-overhead
+  tasks:
+    - name: Pause for 15 seconds to start proxy and gateway
+      ansible.builtin.pause:
+        seconds: 15
+    - name: Run benchmark
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/data_overhead
+        cmd: python3 run.py --datamode=optimized
+    - name: Get benchmark results
+      register: result
+      ansible.builtin.command:
+        cmd: cat /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/data_overhead/optimized2.csv
+    - name: Show benchmark results
+      ansible.builtin.debug:
+        msg: "{{ ansible_hostname }}: {{ result.stdout_lines }}"
+
+- name: Setup MasterSP
+  ansible.builtin.import_playbook: setup_mastersp.yaml
+  tags: data-overhead
+- name: Run Data Overhead experiment (MasterSP)
+  hosts: master
+  gather_facts: true
+  tags: data-overhead
+  tasks:
+    - name: Pause for 15 seconds to start proxy and gateway
+      ansible.builtin.pause:
+        seconds: 15
+    - name: Run benchmark
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/data_overhead
+        cmd: python3 run.py --datamode=raw
+    - name: Get benchmark results
+      register: result
+      ansible.builtin.command:
+        cmd: cat /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/data_overhead/raw2.csv
+    - name: Show benchmark results
+      ansible.builtin.debug:
+        msg: "{{ ansible_hostname }}: {{ result.stdout_lines }}"
+
+- name: Setup WorkerSP
+  ansible.builtin.import_playbook: setup_workersp.yaml
+  tags: schedule-overhead
+- name: Run Schedule Overhead experiment (WorkerSP)
+  hosts: master
+  gather_facts: true
+  tags: schedule-overhead
+  tasks:
+    - name: Pause for 15 seconds to start proxy and gateway
+      ansible.builtin.pause:
+        seconds: 15
+    - name: Run benchmark
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/schedule_overhead
+        cmd: python3 run.py --controlmode=WorkerSP
+    - name: Get benchmark results
+      register: result
+      ansible.builtin.command:
+        cmd: cat /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/schedule_overhead/WorkerSP.csv
+    - name: Show benchmark results
+      ansible.builtin.debug:
+        msg: "{{ ansible_hostname }}: {{ result.stdout_lines }}"
+
+- name: Setup MasterSP
+  ansible.builtin.import_playbook: setup_mastersp.yaml
+  tags: schedule-overhead
+- name: Run Schedule Overhead experiment (MasterSP)
+  hosts: master
+  gather_facts: true
+  tags: schedule-overhead
+  tasks:
+    - name: Pause for 15 seconds to start proxy and gateway
+      ansible.builtin.pause:
+        seconds: 15
+    - name: Run benchmark
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/schedule_overhead
+        cmd: python3 run.py --controlmode=MasterSP
+    - name: Get benchmark results
+      register: result
+      ansible.builtin.command:
+        cmd: cat /home/{{ ansible_ssh_user }}/FaaSFlow/test/asplos/schedule_overhead/MasterSP.csv
+    - name: Show benchmark results
+      ansible.builtin.debug:
+        msg: "{{ ansible_hostname }}: {{ result.stdout_lines }}"

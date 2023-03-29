@@ -1,0 +1,192 @@
+- name: Setup Workers
+  hosts: workers
+  tags: workers
+
+  tasks:
+    - name: Add user to docker group
+      become: true
+      ansible.builtin.user:
+        name: "{{ ansible_ssh_user }}"
+        groups: docker
+        append: true
+    - name: Reset ssh connection for new group
+      ansible.builtin.meta:
+        reset_connection
+    - name: Install packages
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        pkg:
+          - python3-pip
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: latest
+    - name: Add Docker GPG apt key
+      become: true
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: Add Docker repository
+      become: true
+      ansible.builtin.apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    - name: Install Docker
+      become: true
+      ansible.builtin.apt:
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+        update_cache: true
+    - name: Clone repository
+      ansible.builtin.git:
+        repo: 'https://github.com/davidfreina/FaaSFlow.git'
+        update: false
+        dest: /home/{{ ansible_ssh_user }}/FaaSFlow
+    - name: Install python requirements.txt
+      ansible.builtin.pip:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/scripts
+        requirements: requirements.txt
+    - name: Setup redis container
+      community.docker.docker_container:
+        name: redis
+        image: redis
+        state: started
+        recreate: true
+        interactive: true
+        detach: true
+        published_ports:
+          - "6379:6379"
+    - name: Build docker base image
+      community.docker.docker_image:
+        build:
+          nocache: true
+          path: /home/{{ ansible_ssh_user }}/FaaSFlow/src/container
+        source: build
+        tag: workflow_base
+        name: workflow_base
+    - name: Setup translator
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/benchmark
+        cmd: python3 generator/translator.py
+    - name: Setup wordcount
+      ansible.builtin.shell:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/benchmark
+        cmd: wordcount/create_image.sh
+    - name: Setup fileprocessing
+      ansible.builtin.shell:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/benchmark
+        cmd: fileprocessing/create_image.sh
+    - name: Setup illgal_recognizer
+      ansible.builtin.shell:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/benchmark
+        cmd: illgal_recognizer/create_image.sh
+    - name: Setup video
+      ansible.builtin.shell:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/benchmark
+        cmd: video/create_image.sh
+
+- name: Setup Master
+  hosts: master
+  tags: master
+  tasks:
+    - name: Add user to docker group
+      become: true
+      ansible.builtin.user:
+        name: "{{ ansible_ssh_user }}"
+        groups: docker
+        append: true
+    - name: Reset ssh connection for new group
+      ansible.builtin.meta:
+        reset_connection
+    - name: Install packages
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        pkg:
+          - python3-pip
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - wondershaper
+        state: latest
+    - name: Add Docker GPG apt key
+      become: true
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: Add Docker repository
+      become: true
+      ansible.builtin.apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    - name: Install Docker
+      become: true
+      ansible.builtin.apt:
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+        update_cache: true
+    - name: Clone repository
+      ansible.builtin.git:
+        repo: 'https://github.com/davidfreina/FaaSFlow.git'
+        update: false
+        dest: /home/{{ ansible_ssh_user }}/FaaSFlow
+    - name: Remove container
+      community.docker.docker_container:
+        name: couchdb
+        state: absent
+    - name: Setup couchdb container
+      community.docker.docker_container:
+        name: couchdb
+        image: couchdb
+        state: started
+        interactive: true
+        detach: true
+        published_ports:
+          - "5984:5984"
+        env:
+          COUCHDB_USER: openwhisk
+          COUCHDB_PASSWORD: openwhisk
+        volumes:
+          - "/home/{{ ansible_ssh_user }}/FaaSFlow/couchdb.ini:/opt/couchdb/etc/local.ini"
+    - name: Update PyYAML
+      ansible.builtin.pip:
+        name: PyYAML
+        state: latest
+    - name: Install python requirements.txt
+      ansible.builtin.pip:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/scripts
+        requirements: requirements.txt
+    - name: Finish couchdb setup
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/scripts
+        cmd: "python3 couchdb_starter.py"
+    - name: Setup redis container
+      community.docker.docker_container:
+        name: redis
+        image: redis
+        state: started
+        recreate: true
+        interactive: true
+        detach: true
+        published_ports:
+          - "6379:6379"
+    - name: Run grouping for all benchmarks
+      ansible.builtin.command:
+        chdir: /home/{{ ansible_ssh_user }}/FaaSFlow/src/grouping
+        cmd: "python3 grouping.py"
+    # - name: Setup master
+    #   become: true
+    #   ansible.builtin.command:
+    #     chdir: /home/d_freina/FaaSFlow/scripts
+    #     cmd: bash db_setup.bash
+    #   register: db_setup_output
+    #   changed_when: db_setup_output.rc != 0

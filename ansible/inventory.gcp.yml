@@ -1,0 +1,23 @@
+plugin: gcp_compute
+zones:
+  - europe-west4-a
+projects:
+  - syssem-artifact-evaluation
+service_account_file: ../syssem-artifact-evaluation.json
+auth_kind: serviceaccount
+groups:
+  workers: "'worker' in name"
+  master: "'master' in name"
+# scopes:
+#  - 'https://www.googleapis.com/auth/cloud-platform'
+#  - 'https://www.googleapis.com/auth/compute'
+# hostnames:
+#   - worker-1
+#   - worker-2
+#   - worker-3
+#   - worker-4
+#   - worker-5
+#   - worker-6
+#   - worker-7
+# compose:
+#   ansible_host: networkInterfaces[0].accessConfigs[0].natIP

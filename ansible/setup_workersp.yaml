@@ -1,0 +1,55 @@
+- name: Start proxy (workers)
+  hosts: workers
+  gather_facts: true
+  tags: workers
+  tasks:
+    - name: Adjust config.py (raw -> optimized)
+      ansible.builtin.replace:
+        path: /home/d_freina/FaaSFlow/config/config.py
+        regexp: "'raw'"
+        replace: "'optimized'"
+    - name: Adjust config.py (MasterSP -> WorkerSP)
+      ansible.builtin.replace:
+        path: /home/d_freina/FaaSFlow/config/config.py
+        regexp: "'MasterSP'"
+        replace: "'WorkerSP'"
+    - name: Kill proxy
+      # become: true
+      changed_when: true
+      ignore_errors: true
+      ansible.builtin.command:
+        cmd: pkill -f "python3 proxy.py"
+    - name: Start proxy
+      # become: true
+      changed_when: true
+      ansible.builtin.shell:
+        chdir: /home/d_freina/FaaSFlow/src/workflow_manager
+        cmd: "nohup python3 proxy.py {{ ansible_default_ipv4.address }} 8000 > /tmp/proxy.log 2>&1 &"
+
+- name: Start gateway (master)
+  hosts: master
+  gather_facts: true
+  tags: master
+  tasks:
+    - name: Adjust config.py (raw -> optimized)
+      ansible.builtin.replace:
+        path: /home/d_freina/FaaSFlow/config/config.py
+        regexp: "'raw'"
+        replace: "'optimized'"
+    - name: Adjust config.py (MasterSP -> WorkerSP)
+      ansible.builtin.replace:
+        path: /home/d_freina/FaaSFlow/config/config.py
+        regexp: "'MasterSP'"
+        replace: "'WorkerSP'"
+    - name: Kill gateway
+      # become: true
+      changed_when: true
+      ignore_errors: true
+      ansible.builtin.command:
+        cmd: pkill -f "python3 gateway.py"
+    - name: Start gateway
+      # become: true
+      changed_when: true
+      ansible.builtin.shell:
+        chdir: /home/d_freina/FaaSFlow/src/workflow_manager
+        cmd: "nohup python3 gateway.py {{ ansible_default_ipv4.address }} 7000 > /tmp/gateway.log 2>&1 &"
