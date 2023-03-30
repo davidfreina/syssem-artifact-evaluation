@@ -1,6 +1,7 @@
 # Reproducing FaaSFlow
 
-This repository should act as a logbook for the steps I have taken to reproduce the artifact from the paper "FaaSFlow"
+This repository should act as a logbook for the steps I have taken to reproduce the artifact from the paper "FaaSFlow".
+This is only a loose collection of my thoughts and problems throughout reproducing the artifacts.
 
 ## Setting up environment
 
