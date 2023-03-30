@@ -1,0 +1,2 @@
+mem_usage: 102.37430004986676 MB
+cpu_usage: 0.19 core
