@@ -39,10 +39,30 @@ While running the setup script I noticed that pip3 was not found so I installed 
 Furthermore, the setup script has to be executed in the folder it is located because otherwise a ``cd`` command fails.
 The installation also failed because an old version of PyYAML was installed.
 I had to update the paths for ``WORKFLOW_YAML_ADDR`` in ``config/config.py``.
+I also had to add a mapping for the custom couchdb config to the docker command.
 
 After these steps I was able to setup the maste/DB node.
 
 ### Setting up the worker nodes
 
-After fixing all the issues desribed in the previous section and adding them to a fork of the repository I was able to setup the workers without any problems.
-I just executed to ``worker_setup.bash`` script and waited for its completion.
+After fixing all the issues desribed in the previous section and adding them to a fork of the repository I was able to setup the workers.
+I just executed the ``worker_setup.bash`` script with sudo and waited for its completion.
+
+## Running the experiments
+
+### Starting proxy on workers
+
+
+
+
+
+
+
+
+
+
+
+
+# Ansible
+
+ansible-galaxy collection install community.docker
