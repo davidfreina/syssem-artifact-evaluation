@@ -3,15 +3,6 @@
   tags: workers
 
   tasks:
-    - name: Add user to docker group
-      become: true
-      ansible.builtin.user:
-        name: "{{ ansible_ssh_user }}"
-        groups: docker
-        append: true
-    - name: Reset ssh connection for new group
-      ansible.builtin.meta:
-        reset_connection
     - name: Install packages
       become: true
       ansible.builtin.apt:
@@ -42,6 +33,15 @@
           - containerd.io
         state: latest
         update_cache: true
+    - name: Add user to docker group
+      become: true
+      ansible.builtin.user:
+        name: "{{ ansible_ssh_user }}"
+        groups: docker
+        append: true
+    - name: Reset ssh connection for new group
+      ansible.builtin.meta:
+        reset_connection
     - name: Clone repository
       ansible.builtin.git:
         repo: 'https://github.com/davidfreina/FaaSFlow.git'
